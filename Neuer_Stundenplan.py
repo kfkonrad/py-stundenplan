@@ -65,7 +65,7 @@ Version 1.7 (28/01/2018)
         span -> Span
         Class -> Lecture
     Renamed the follwing functions:
-        addClass -> Add_lecture
+        addClass -> add_lecture
     Changed variable names and comments to fit new classnames and PEP
         conventions.
 """
