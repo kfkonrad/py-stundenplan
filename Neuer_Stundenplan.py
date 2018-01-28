@@ -21,7 +21,6 @@ Version 1.1 (03/10/2016)
  Version 1.1.1 (06/10/2016)
     add will work for all days, not just for today
     apparently the julian functions are badly broken
-        -> TODO: Research correct julian functions
 Version 1.2 (13/10/2016)
     julian functions were NOT broken
     all it needed to fix the bug was an index shift
@@ -52,55 +51,40 @@ Version 1.5 (05/04/2017)
     remall might look like this: remall = [ (20170815,"Fach") ]
     This definition would remove all instances of "Fach" that occur from
         20170815 on, including 20170815.
-Version 1.6 (08/11.2017)
+Version 1.6 (08/11/2017)
     Split into library and code.
     Refactored code to follow the pyflakes style guidelines.
     Reshaped semester files to form complete library files and valid python
         programs on their own.
+Version 1.7 (28/01/2018)
+    Added type hints as proposed in PEP 484 and PEP 526.
+    Thus this script is only compatible with Python 3.6 or higher.
+    Removed unused legacy functions datetojulian and juliantodate
+    Renamed the following classes (oldname -> newname)
+        clock -> Clock
+        span -> Span
+        Class -> Lecture
+    Renamed the follwing functions:
+        addClass -> Add_lecture
+    Changed variable names and comments to fit new classnames and PEP
+        conventions.
 """
 
 import time
+import datetime
 from lecture_classes import *
 import sys
+from typing import Any
 
 from wise1718 import *
-giveargs = True
-split = ";"
+
+giveargs: bool = True
+split: str = ";"
 
 
-def datetojulian(y, m, d):  # Gregorianisches Datum zu julian date
-    d = int(d)
-    m = int(m)
-    y = int(y)
-    jd = (1461 * (y + 4800 + (m - 14) / 12)) / 4 + (367 * (m - 2 - 12 * (
-        (m - 14) / 12))) / 12 - (3 * ((y + 4900 +
-                                       (m - 14) / 12) / 100)) / 4 + d - 32075
-    return int(jd)
-
-
-def juliantodate(jd):  # julian date zu gregorianischem Datum
-    h = jd + 68569
-    n = (4 * h) // 146097
-    h = h - (146097 * n + 3) // 4
-    i = (4000 * (h + 1)) // 1461001
-    h = h - (1461 * i) // 4 + 31
-    j = (80 * h) // 2447
-    d = h - (2447 * j) // 80
-    h = j // 11
-    m = j + 2 - (12 * h)
-    y = 100 * (n - 49) + i + h
-    if d < 10:
-        d = "0" + str(d)
-    else:
-        d = str(d)
-    if m < 10:
-        m = "0" + str(m)
-    else:
-        m = str(m)
-    return int(str(y) + m + d)
-
-
-def geteom(m, y):  # Determine end of month
+def geteom(m: int,
+           y: int
+           ) -> int:  # Determine end of month
     if m in (1, 3, 5, 7, 8, 10, 12):
         return 31
     elif m == 2:
@@ -112,12 +96,13 @@ def geteom(m, y):  # Determine end of month
         return 30
 
 
-def numericdatecorrect(date):  # correct date format after increment
-    date = str(date)
-    y = int(date[:4])
-    m = int(date[4:6])
-    d = int(date[6:])
-    eom = geteom(m, y)
+def numericdatecorrect(date: int) -> int:
+    # correct date format after increment
+    strdate: str = str(date)
+    y: int = int(strdate[:4])
+    m: int = int(strdate[4:6])
+    d: int = int(strdate[6:])
+    eom: int = geteom(m, y)
     if d > eom:
         d = 1
         m += 1
@@ -131,61 +116,69 @@ def numericdatecorrect(date):  # correct date format after increment
     return int(str(y) + str(m) + str(d))
 
 
-def dayinc(addX=1):  # Erhöht Datum um 1 Tag, erhöht Wochentag zyklisch
+def dayinc(add_days: int = 1) -> None:
+    # Erhöht Datum um 1 Tag, erhöht Wochentag zyklisch
     global todaywd, todaydate
-    todaywd = (todaywd + addX) % 7
+    todaywd = (todaywd + add_days) % 7
     # julian=datetojulian(str(todaydate)[0:4],
     #                    str(todaydate)[4:6],
     #                    str(todaydate)[6:8])
     # todaydate=juliantodate(julian+addX+1)
-    todaydate = numericdatecorrect(todaydate + addX)
+    todaydate = numericdatecorrect(todaydate + add_days)
 
 
 # Funktionen zu processor
 
 
-def getend(fach):  # Bestimmt Ende der aktuellen Stunde, sofern vorhanden
+def getend(fach: List[Span]) -> Clock:  # Bestimmt Ende der aktuellen Stunde,
+    # sofern vorhanden
     global ctime  # aktuelle end-Zeit
     if 'ctime' not in globals():  # initialisiert ctime einmalig
-        ctime = clock()
-    spanne = fach[-1]
-    # localtime-clock erzeugen
-    localt = clock(time.strftime("%H:%M"))
-    # Testcase: localt=clock("12:00")
+        ctime = Clock()  # type: Clock
+    spanne: Span = fach[-1]
+    # localtime-Clock erzeugen
+    localt: Clock = Clock(time.strftime("%H:%M"))
+    # Testcase: localt=Clock("12:00")
     # gegen localtime testen und ggf ersetzen
     if spanne.isbetween(localt):
         ctime = spanne.end
     return ctime
 
 
-def getlen(fach):  # Bestimmt Ende der aktuellen Stunde, sofern vorhanden
+def getlen(fach: List[Any]) -> int:  # beinhaltet immer int, str, Span.
+    # Aufgrund verschiedener Konversionen ist List[Any] der allgemeinste Typ,
+    # der fach beschreiben kann.
+    # Bestimmt Ende der aktuellen Stunde, sofern vorhanden
     global lentime  # aktuelle end-Zeit
-    if 'lentime' not in globals():  # initialisiert ctime einmalig
-        lentime = 0
-    spanne = fach[-1]
-    # localtime-clock erzeugen
-    localt = clock(time.strftime("%H:%M"))
-    # Testcase: localt=clock("12:00")
+    if 'lentime' not in globals():  # initialisiert lentime einmalig
+        lentime = 0  # type: int
+    spanne: Span = fach[-1]
+    # localtime-Clock erzeugen
+    localt: Clock = Clock(time.strftime("%H:%M"))
+    # Testcase: localt=Clock("12:00")
     # gegen localtime testen und ggf ersetzen
     if spanne.isbetween(localt):
         lentime = spanne.length()
     return lentime
 
 
-def qsort(classes):  # Quicksort für Class-Array
-    if classes == []:
+def qsort(lectures: List[Any]) -> List[Any]:  # Quicksort für Lecture-List
+    if not lectures:
         return []
     else:
-        pivot = classes.pop(0)
-        lesser = qsort([i for i in classes if int(i[0]) < int(pivot[0])])
-        greater = qsort([i for i in classes if int(i[0]) >= int(pivot[0])])
+        pivot: Any = lectures.pop(0)
+        lesser: List[Any]
+        greater: List[Any]
+        lesser = qsort([i for i in lectures if int(i[0]) < int(pivot[0])])
+        greater = qsort([i for i in lectures if int(i[0]) >= int(pivot[0])])
         return lesser + [pivot] + greater
 
 
-def correct(thisfaecher):  # Korrigens basierend auf holiday, add, rem
-    holibool = False
+def correct(thisfaecher: List[Lecture]) -> List[Lecture]:
+    # Korrigens basierend auf holiday, add, rem
+    holibool: bool = False
     for arr in holiday:  # Ferien bestimmen
-        if todaydate >= arr[0] and todaydate <= arr[1]:
+        if arr[0] <= todaydate <= arr[1]:
             holibool = True
             break
     # Bei Fächern, die am aktuellen Tag nicht stattfinden sollen, wird der
@@ -215,10 +208,13 @@ def correct(thisfaecher):  # Korrigens basierend auf holiday, add, rem
 # Funktionen zur main
 
 
-def processor(wd):  # Gibt Fächerliste für den aktuellen Tag aus. Gibt Ende der
-    # aktuellen Stunde, Tages zurück
-    todayClasses = []
-    thisfaecher = copy.deepcopy(faecher)
+def processor(wd: int) -> Tuple[Clock, Clock, int, int]:
+    # Gibt Fächerliste für den aktuellen Tag aus. Gibt Ende der aktuellen
+    # Stunde, Tages zurück.
+    todaylectures: List[Any] = []  # beinhaltet immer int, str, Span. Aufgrund
+    # verschiedener Konversionen ist List[Any] der allgemeinste Typ, der
+    # todaylectures beschreiben kann.
+    thisfaecher: List[Lecture] = copy.deepcopy(faecher)
     thisfaecher = correct(thisfaecher)
     # if len(thisfaecher)>0:
     #    print(thisfaecher[-1])
@@ -227,25 +223,26 @@ def processor(wd):  # Gibt Fächerliste für den aktuellen Tag aus. Gibt Ende de
         for i in range(0, len(fach.schedule)):
             # print(wd,fach.schedule[i].wd,fach.subject)
             if wd == fach.schedule[i].wd:  # Wenn Fach heute stattfinded
-                todayClasses.append([
+                todaylectures.append([
                     fach.schedule[i].begin.h,
                     fach.pprint(i), fach.schedule[i].bespan
                 ])
-    if len(todayClasses) == 0:
+    if len(todaylectures) == 0:
         print("frei")
-        return clock(), clock(), 0, 0
-    todayClasses = qsort(todayClasses)
-    end = clock()
-    currentlen = 0
-    daylen = todayClasses[-1][-1].end.hash - todayClasses[0][-1].begin.hash
-    for fach in todayClasses:
+        return Clock(), Clock(), 0, 0
+    todaylectures = qsort(todaylectures)
+    end: Clock = Clock()
+    current_len: int = 0
+    day_len: int = todaylectures[-1][-1].end.hash
+    day_len -= todaylectures[0][-1].begin.hash
+    for fach in todaylectures:
         end = getend(fach)
-        currentlen = getlen(fach)
+        current_len = getlen(fach)
         print(fach[1])
-    return [end, todayClasses[-1][-1].end, currentlen, daylen]
+    return end, todaylectures[-1][-1].end, current_len, day_len
 
 
-def wdtostr(wd):  # Gibt numerischen Wochentag menschenlesbar aus
+def wdtostr(wd: int) -> None:  # Gibt numerischen Wochentag menschenlesbar aus
     if wd == 0:
         print("Sonntag:")
     elif wd == 1:
@@ -264,34 +261,41 @@ def wdtostr(wd):  # Gibt numerischen Wochentag menschenlesbar aus
         print(wd)
 
 
-def howlong(endTclass, endTday):  # Bestimmt, wie lange die Stunde/der Tag
-    #   noch geht
-    localt = clock(time.strftime("%H:%M", time.localtime()))
-    # Testcase: localt=clock("12:00")
-    endTclass = copy.deepcopy(endTclass)
-    endTday = copy.deepcopy(endTday)
-    endTclass.minus(localt)
-    endTday.minus(localt)
-    if endTclass.hash > 0:
+def howlong(endtclass: Clock,
+            endtday: Clock
+            ) -> None:
+    # Bestimmt, wie lange die Stunde/der Tag noch geht
+    localt: Clock = Clock(time.strftime("%H:%M", time.localtime()))
+    # Testcase: localt=Clock("12:00")
+    endtclass = copy.deepcopy(endtclass)
+    endtday = copy.deepcopy(endtday)
+    endtclass.minus(localt)
+    endtday.minus(localt)
+    if endtclass.hash > 0:
         print()
-        print("Diese Stunde noch:", endTclass.pprint())
-        print("Heute noch:", endTday.pprint())
-    elif endTday.hash > 0:
+        print("Diese Stunde noch:", endtclass.pprint())
+        print("Heute noch:", endtday.pprint())
+    elif endtday.hash > 0:
         print()
-        print("Heute noch:", endTday.pprint())
+        print("Heute noch:", endtday.pprint())
 
 
-def addClass(date, name, room, start, end):
+def add_lecture(date: int,
+                name: str,
+                room: str,
+                start: str,
+                end: str
+                ) -> Tuple[str, Lecture]:
     # julian=datetojulian(str(todaydate)[0:4],
     #                    str(todaydate)[4:6],
     #                    str(todaydate)[6:8])
     # wd=(julian+2)%7
-    date = str(date)
-    wd = int(datetime.strptime(date, "%Y%m%d").strftime("%w")) - 1
+    strdate = str(date)
+    wd: int = int(datetime.strptime(strdate, "%Y%m%d").strftime("%w")) - 1
 
     # print(wd,int(datetime.strptime(str(todaydate),"%Y%m%d").strftime("%w")))
     # print(date,name,wd)
-    return (date, Class(name, room, T(start, end, 5)))
+    return strdate, Lecture(name, room, T(start, end, wd))
 
 
 for elem in ['faecher', 'rem', 'add', 'holiday', 'remall']:
@@ -299,12 +303,19 @@ for elem in ['faecher', 'rem', 'add', 'holiday', 'remall']:
         setattr(sys.modules[__name__], elem, [])
 
 # Wochentag, Datum
-todaywd = int(time.strftime("%w"))
+todaywd = int(time.strftime("%w"))  # type: int
 # Testcase: todaywd=5
 todaydate = int(
-    time.strftime("%Y") + time.strftime("%m") + time.strftime("%d"))
+    time.strftime("%Y")
+    + time.strftime("%m")
+    + time.strftime("%d")
+)  # type: int
 
 print("Heute:")
+untilclass: Clock
+untilday: Clock
+currentlen: int
+daylen: int
 untilclass, untilday, currentlen, daylen = processor(todaywd)
 print("-----")
 print("Morgen:")

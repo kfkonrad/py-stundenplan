@@ -10,7 +10,7 @@
 command: """
   export LANG=de_DE.UTF-8
   cd /Users/Shared/Ubersicht/Stundenplan.widget/
-  /opt/local/bin/python3 Neuer_Stundenplan.py
+  /opt/local/bin/python3.6 Neuer_Stundenplan.py
 """
 
 

@@ -1,11 +1,12 @@
 # SoSe 16
+from typing import List, Tuple
 
 import lecture_classes
 # Leider braucht es für eine Erkennung der Namen mit pyflakes diesen
 # syntaktischen Käse, ansonsten tut der Code auch mit einem einfachen
 # from lecture_classes import *
-Class = lecture_classes.Class
-T = lecture_classes
+Lecture = lecture_classes.Lecture
+T = lecture_classes.T
 morgen = lecture_classes.morgen
 vormittag = lecture_classes.vormittag
 mittag = lecture_classes.mittag
@@ -18,29 +19,38 @@ mittag(weekday)     == T("11:45","13:15",weekday)
 nachmittag(weekday) == T("14:00","15:30",weekday)
 abend(weekday)      == T("15:45","17:15",weekday)
 """
-faecher = []
-rem = []
-add = []
-holiday = []
-remall = []
+faecher: List[Lecture] = []
+rem: List[Tuple[int, str]] = []
+add: List[Tuple[int, Lecture]] = []
+holiday: List[Tuple[int, int]] = []
+remall: List[Tuple[int, str]] = []
 
 faecher = [
-    Class('AWS-V', 'A136', T('11:45', '13:15', 1), T('11:45', '13:15', 3)),
-    Class('PROG1-V', 'A135', T('14:00', '15:30', 1), T('11:45', '13:15', 4)),
-    Class('ALDS-V', 'Audimax', T('09:45', '11:15', 2), T('09:45', '11:15', 4)),
-    Class('ALDS-Ü', 'G224', T('11:45', '13:15', 2)),
-    Class('HCI-Ü', 'O205', T('08:00', '09:30', 3)),
-    Class('AWS-Ü', 'A135', T('09:45', '11:15', 3)),
-    Class('PROG1-P', 'Q013', T('14:00', '15:30', 4)),
-    Class('HCI-V', 'Q106', T('08:00', '09:30', 5)),
-    Class('KW-V', 'Q106', T('09:45', '11:15', 5)),
-    Class('UnixAG', 'A204.2', T('14:00', '16:00', 5)),
+    Lecture('AWS-V', 'A136',
+            T('11:45', '13:15', 1),
+            T('11:45', '13:15', 3)
+            ),
+    Lecture('PROG1-V', 'A135',
+            T('14:00', '15:30', 1),
+            T('11:45', '13:15', 4)
+            ),
+    Lecture('ALDS-V', 'Audimax',
+            T('09:45', '11:15', 2),
+            T('09:45', '11:15', 4)
+            ),
+    Lecture('ALDS-Ü', 'G224', T('11:45', '13:15', 2)),
+    Lecture('HCI-Ü', 'O205', T('08:00', '09:30', 3)),
+    Lecture('AWS-Ü', 'A135', T('09:45', '11:15', 3)),
+    Lecture('PROG1-P', 'Q013', T('14:00', '15:30', 4)),
+    Lecture('HCI-V', 'Q106', T('08:00', '09:30', 5)),
+    Lecture('KW-V', 'Q106', T('09:45', '11:15', 5)),
+    Lecture('UnixAG', 'A204.2', T('14:00', '16:00', 5)),
     #
-    # Class('Beispiel','A123',T('16:00','19:00',6)),
-    # Class('Beispiel 2','A123',T('20:00','22:00',6)),
-    # Testcase: Class('HCI-V','Q106',T('3:00','3:45',5)),
-    # Testcase: Class('KW-V','Q106',T('3:50','6:15',5)),
-    # Testcase: Class('KW-V','Q106',T('7:45','9:15',5))
+    # Lecture('Beispiel','A123',T('16:00','19:00',6)),
+    # Lecture('Beispiel 2','A123',T('20:00','22:00',6)),
+    # Testcase: Lecture('HCI-V','Q106',T('3:00','3:45',5)),
+    # Testcase: Lecture('KW-V','Q106',T('3:50','6:15',5)),
+    # Testcase: Lecture('KW-V','Q106',T('7:45','9:15',5))
 ]
 holiday = [
     (20160101, 20160320),
@@ -67,8 +77,8 @@ rem = [
 ]
 
 add = [
-    (20160321, Class("PROG-V", "Q106/107", T('14:00', '15:30', 4))),
-    (20160512, Class("ALDS-V", "A134", T('17:30', '19:00', 4))),
-    (20160519, Class("ALDS-V", "A134", T('17:30', '19:00', 4))),
-    # addClass(20160902, "Test", "Raum", '14:30', "16:20"),
+    (20160321, Lecture("PROG-V", "Q106/107", T('14:00', '15:30', 4))),
+    (20160512, Lecture("ALDS-V", "A134", T('17:30', '19:00', 4))),
+    (20160519, Lecture("ALDS-V", "A134", T('17:30', '19:00', 4))),
+    # addLecture(20160902, "Test", "Raum", '14:30', "16:20"),
 ]
