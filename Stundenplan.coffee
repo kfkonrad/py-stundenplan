@@ -15,7 +15,7 @@ command: """
 
 
 # the refresh frequency in milliseconds
-refreshFrequency: "1s"
+refreshFrequency: "15s"
 
 # render gets called after the shell command has executed. The command's output
 # is passed in as a string. Whatever it returns will get rendered as HTML.
@@ -123,15 +123,15 @@ update: (output, domEl) ->
 style: """
   bar-height: 1.55em
 
-  background: rgba(#fff, 0.65)
+  background: rgba(#000, 0.35)
   -webkit-backdrop-filter: blur(5px)
   border-radius: 8px
-  border: 2px solid #fff
+  border: 2px solid #000
   -webkit-border-filter: blur(5px)
 
   box-sizing: border-box
-  box-shadow: 5px 5px 5px rgba(#000000, 0.25)
-  color: #141f33
+  box-shadow: 2px 2px 2px rgba(#000000, 0.85)
+  color: #fbf0fc
   font-family: Helvetica Neue
   font-weight: 300
   font-size: 110%
@@ -149,7 +149,7 @@ style: """
     border-radius: bar-height
     float: center
     clear: both
-    background: rgba(#fff, .5)
+    background: rgba(#000, .5)
     position: absolute
     margin-bottom: 10px
     margin-left: 5 px
@@ -167,10 +167,10 @@ style: """
     border-radius: 100px
 
   .bar-hour
-    background: rgba(#00c27b, 0.6)
+    background: rgba(#00c27b, 0.75)
 
   .bar-day
-    background: rgba(#009C63, 0.6)
+    background: rgba(#009C63, 0.75)
 
 
   .overbar
@@ -181,4 +181,6 @@ style: """
     text-align: center
     z-index: 3
     position: absolute
+  .whitebg
+    background: #fff
 """
