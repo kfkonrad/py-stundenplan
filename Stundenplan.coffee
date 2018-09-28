@@ -15,7 +15,7 @@ command: """
 
 
 # the refresh frequency in milliseconds
-refreshFrequency: "1s"
+refreshFrequency: "15s"
 
 # render gets called after the shell command has executed. The command's output
 # is passed in as a string. Whatever it returns will get rendered as HTML.
