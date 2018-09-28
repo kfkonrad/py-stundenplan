@@ -27,7 +27,7 @@ remall: List[Tuple[int, str]] = []
 
 faecher = [
     Lecture("BMC++-V/P", "A116.2", morgen(1), morgen(3, room="Q011")),
-    Lecture("EIS-V", "A136", mittag(1)),
+    Lecture("EIS-V", "A136", T("01:45","13:15",1)),
     Lecture("EIS-Ü", "G225", nachmittag(1), abend(1)),
     Lecture("MOBU-V/Ü", "O205", morgen(2)),
     Lecture("VDA-V/Ü", "Kapelle", vormittag(2), mittag(2)),
@@ -36,7 +36,7 @@ faecher = [
     Lecture("BWL-Ü", "A135", vormittag(5)),
     Lecture("Arbeit", "C105", T("09:00", "16:30", 3)),
     Lecture("Arbeit", "C105", T("09:00", "14:00", 4)),
-    Lecture("unixAG", "A204.2", T("16:30", "18:00", 3)),
+    #Lecture("unixAG", "A204.2", T("16:30", "18:00", 3)),
 ]
 
 rem = [
@@ -48,6 +48,7 @@ rem = [
 add = [
     (20171108, Lecture("ICT-Meeting", "Campus PS", T("10:00", "12:00", 3))),
     (20171108, Lecture("Code Review", "Gisbo", T("14:00", "16:00", 3))),
+    (20180131, Lecture("Code Review", "Gisbo", T("14:00", "23:00", 3))),
     (20171121, Lecture("VDA-V/Ü", "Kapelle", mittag(2)))
 ]
 

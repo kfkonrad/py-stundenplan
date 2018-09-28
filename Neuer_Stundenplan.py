@@ -68,263 +68,349 @@ Version 1.7 (28/01/2018)
         addClass -> add_lecture
     Changed variable names and comments to fit new classnames and PEP
         conventions.
+Version 1.8 (30/01/2018) - It's been a while, hasn't it
+    Complete restructuring of the entire architecture to be independend from
+        global variables and entirely based on custom classes.
+    Also @property, @total_ordering, @staticmethod and @classmethod
+        decorators are used widely
+    No more starred imports
+    Every function, method and property has gotten a type annotation
+    For now I think, that this project is compliant to the unwritten Clean Code
+    Codex (as described in Robert C. Martin's book 'Clean Code')
 """
 
 import time
-import datetime
-from lecture_classes import *
-import sys
-from typing import Any
+import copy
+from functools import total_ordering
+from typing import Any, NoReturn, List, Tuple, Sequence
+from lecture_classes import Lecture, Span, Clock
 
-from wise1718 import *
+import sose18 as database
 
 giveargs: bool = True
 split: str = ";"
 
 
-def geteom(m: int,
-           y: int
-           ) -> int:  # Determine end of month
-    if m in (1, 3, 5, 7, 8, 10, 12):
-        return 31
-    elif m == 2:
-        if (y % 4 == 0 and y % 100 != 0) or y % 400 == 0:
-            return 29
+# Klassen zu processor
+
+@total_ordering
+class LectureDigest(Lecture):
+    imporant_schedule_index: int
+
+    def __init__(self,
+                 lecture: Lecture,
+                 imporant_schedule_index: int
+                 ) -> NoReturn:
+        super().__init__(lecture.subject, lecture.room, *lecture.schedule)
+        self.imporant_schedule_index = imporant_schedule_index
+
+    @property
+    def important_begin(self) -> int:
+        return self.schedule[self.imporant_schedule_index].begin.hash
+
+    @property
+    def important_pprint(self) -> str:
+        return self.pprint(self.imporant_schedule_index)
+
+    @property
+    def important_bespan(self) -> Span:
+        return self.schedule[self.imporant_schedule_index].bespan
+
+    @staticmethod
+    def _is_valid_operand(other: Any) -> bool:
+        return hasattr(other, 'important_begin')
+
+    def __lt__(self, other: Any) -> Any:
+        if self._is_valid_operand(other):
+            return self.important_begin < other.important_begin
+        return NotImplemented
+
+    def __eq__(self, other: Any) -> Any:
+        if self._is_valid_operand(other):
+            return self.important_begin == other.important_begin
+        return NotImplemented
+
+
+class Date:
+    _weekday: int
+    _numeric_date: int
+
+    def __init__(self, weekday: int, numeric_date: int) -> NoReturn:
+        self._weekday = weekday
+        self._numeric_date = numeric_date
+
+    @classmethod
+    def today(cls) -> 'Date':
+        today_weekday: int = int(time.strftime("%w"))  # type: int
+        today_date: int = int(
+            time.strftime("%Y")
+            + time.strftime("%m")
+            + time.strftime("%d")
+        )
+        return cls(today_weekday, today_date)
+
+    def step(self, add_days: int = 1) -> NoReturn:
+        # Erhöht Datum um 1 Tag, erhöht Wochentag zyklisch
+        self._weekday = (self._weekday + add_days) % 7
+        self._numeric_date = self._numeric_date + add_days
+        self._numeric_date_correct()
+
+    @property
+    def weekday(self) -> int:
+        return self._weekday
+
+    @property
+    def numeric_date(self) -> int:
+        return self._numeric_date
+
+    def pprint_weekday(self) -> str:
+        if self._weekday == 0:
+            return "Sonntag:"
+        elif self._weekday == 1:
+            return "Montag:"
+        elif self._weekday == 2:
+            return "Dienstag:"
+        elif self._weekday == 3:
+            return "Mittwoch:"
+        elif self._weekday == 4:
+            return "Donnerstag:"
+        elif self._weekday == 5:
+            return "Freitag:"
+        elif self._weekday == 6:
+            return "Samstag:"
         else:
-            return 28
-    else:
-        return 30
+            raise ValueError('unexpected weekday value in Date instance')
+
+    def _numeric_date_correct(self) -> NoReturn:
+        class YMD:
+            y: int
+            m: int
+            d: int
+
+            def __init__(self, _date: int) -> None:
+                strdate: str = str(_date)
+                self.y = int(strdate[:4])
+                self.m = int(strdate[4:6])
+                self.d = int(strdate[6:])
+                self.__numeric_day_correct()
+                self.__numeric_month_correct()
+
+            def end_of_month(self) -> int:
+                if self.m in (1, 3, 5, 7, 8, 10, 12):
+                    return 31
+                elif self.m == 2:
+                    if (self.y % 4 == 0 and self.y % 100 != 0) \
+                            or self.y % 400 == 0:
+                        return 29
+                    else:
+                        return 28
+                else:
+                    return 30
+
+            def __numeric_day_correct(self) -> None:
+                eom: int = self.end_of_month()
+                if self.d > eom:
+                    self.d = 1
+                    self.m += 1
+
+            def __numeric_month_correct(self) -> None:
+                if self.m > 12:
+                    self.m = 1
+                    self.y += 1
+
+            def __str__(self):
+                ret: str = str(self.y)
+                if self.m < 10:
+                    ret += "0"
+                ret += str(self.m)
+                if self.d < 10:
+                    ret += "0"
+                return ret + str(self.d)
+
+            def __int__(self):
+                return int(self.__str__())
+
+        self._numeric_date = int(YMD(self._numeric_date))
 
 
-def numericdatecorrect(date: int) -> int:
-    # correct date format after increment
-    strdate: str = str(date)
-    y: int = int(strdate[:4])
-    m: int = int(strdate[4:6])
-    d: int = int(strdate[6:])
-    eom: int = geteom(m, y)
-    if d > eom:
-        d = 1
-        m += 1
-        if m > 12:
-            m = 1
-            y += 1
-    if m < 10:
-        m = "0" + str(m)
-    if d < 10:
-        d = "0" + str(d)
-    return int(str(y) + str(m) + str(d))
+class SelfCorrectingLectureList:
+    _lectures: List[LectureDigest]
+    _date: Date
 
+    def __init__(self, _date) -> NoReturn:
+        self._date = copy.deepcopy(date)
+        self._lectures = []
 
-def dayinc(add_days: int = 1) -> None:
-    # Erhöht Datum um 1 Tag, erhöht Wochentag zyklisch
-    global todaywd, todaydate
-    todaywd = (todaywd + add_days) % 7
-    # julian=datetojulian(str(todaydate)[0:4],
-    #                    str(todaydate)[4:6],
-    #                    str(todaydate)[6:8])
-    # todaydate=juliantodate(julian+addX+1)
-    todaydate = numericdatecorrect(todaydate + add_days)
+    def extend(self, _lectures: Sequence[Lecture]) -> NoReturn:
+        self._lectures.extend(_lectures)
 
+    def append(self, lecture: Lecture) -> NoReturn:
+        self._lectures.append(lecture)
 
-# Funktionen zu processor
+    def correct_with_holiday(self) -> NoReturn:
+        for arr in database.holiday:
+            if arr[0] <= self._date.numeric_date <= arr[1]:
+                self._lectures = []
+                break
 
+    def correct_with_rem(self) -> NoReturn:
+        for i in range(0, len(self._lectures)):
+            for numeric_date, subject in database.rem:
+                if self._date.numeric_date == numeric_date and \
+                        self._lectures[i].subject == subject:
+                    self._lectures[i].schedule = ()
 
-def getend(fach: List[Span]) -> Clock:  # Bestimmt Ende der aktuellen Stunde,
-    # sofern vorhanden
-    global ctime  # aktuelle end-Zeit
-    if 'ctime' not in globals():  # initialisiert ctime einmalig
-        ctime = Clock()  # type: Clock
-    spanne: Span = fach[-1]
-    # localtime-Clock erzeugen
-    localt: Clock = Clock(time.strftime("%H:%M"))
-    # Testcase: localt=Clock("12:00")
-    # gegen localtime testen und ggf ersetzen
-    if spanne.isbetween(localt):
-        ctime = spanne.end
-    return ctime
+    def correct_with_remall(self) -> NoReturn:
+        for numeric_date, subject in database.rem:
+            if self._date.numeric_date >= numeric_date:
+                for i in range(0, len(self._lectures)):
+                    if self._lectures[i].subject == subject:
+                        self._lectures[i].schedule = ()
 
+    def correct_with_add(self) -> NoReturn:
+        for numeric_date, lecture in database.add:  # type int, Lecture
+            if self._date.numeric_date == numeric_date:
+                self._lectures.append(lecture)
 
-def getlen(fach: List[Any]) -> int:  # beinhaltet immer int, str, Span.
-    # Aufgrund verschiedener Konversionen ist List[Any] der allgemeinste Typ,
-    # der fach beschreiben kann.
-    # Bestimmt Ende der aktuellen Stunde, sofern vorhanden
-    global lentime  # aktuelle end-Zeit
-    if 'lentime' not in globals():  # initialisiert lentime einmalig
-        lentime = 0  # type: int
-    spanne: Span = fach[-1]
-    # localtime-Clock erzeugen
-    localt: Clock = Clock(time.strftime("%H:%M"))
-    # Testcase: localt=Clock("12:00")
-    # gegen localtime testen und ggf ersetzen
-    if spanne.isbetween(localt):
-        lentime = spanne.length()
-    return lentime
+    def keep_only_todays_lectures(self) -> NoReturn:
+        new_lectures: List[LectureDigest] = []
+        for fach in self._lectures:
+            for i in range(0, len(fach.schedule)):
+                if self._date.weekday == fach.schedule[i].weekday:
+                    new_lectures.append(LectureDigest(fach, i))
+        self._lectures = new_lectures
 
+    def _maybe_not_implemented(self) -> NoReturn:
+        if Lecture in [type(i) for i in self._lectures]:
+            import inspect
+            raise NotImplementedError('Must run .keep_only_todays_lectures \
+                before running .' + inspect.stack()[1][3] + ' on \
+                SelfCorrectingLectureList!')
 
-def qsort(lectures: List[Any]) -> List[Any]:  # Quicksort für Lecture-List
-    if not lectures:
-        return []
-    else:
-        pivot: Any = lectures.pop(0)
-        lesser: List[Any]
-        greater: List[Any]
-        lesser = qsort([i for i in lectures if int(i[0]) < int(pivot[0])])
-        greater = qsort([i for i in lectures if int(i[0]) >= int(pivot[0])])
-        return lesser + [pivot] + greater
+    def sort(self) -> NoReturn:
+        self._maybe_not_implemented()
+        self._lectures = self._sort_helper(self._lectures)
 
+    def apply_all_correctives_and_sort(self) -> NoReturn:
+        self.correct_with_holiday()
+        self.correct_with_rem()
+        self.correct_with_remall()
+        self.correct_with_add()
+        self.keep_only_todays_lectures()
+        self.sort()
 
-def correct(thisfaecher: List[Lecture]) -> List[Lecture]:
-    # Korrigens basierend auf holiday, add, rem
-    holibool: bool = False
-    for arr in holiday:  # Ferien bestimmen
-        if arr[0] <= todaydate <= arr[1]:
-            holibool = True
-            break
-    # Bei Fächern, die am aktuellen Tag nicht stattfinden sollen, wird der
-    # schedule geflusht. Info stammt aus rem
-    for i in range(0, len(thisfaecher)):
-        for j in range(0, len(rem)):
-            if todaydate == rem[j][0]:  # Datum passt
-                if thisfaecher[i].subject == rem[j][1]:  # Fächername passt
-                    thisfaecher[i].schedule = ()
-    # Bei Fächern, die nicht mehr stattfinden sollen, wird der
-    # schedule geflusht. Info stammt aus remall
-    for j in range(0, len(remall)):
-        if todaydate >= remall[j][0]:  # Datum passt
-            for i in range(0, len(thisfaecher)):
-                if thisfaecher[i].subject == remall[j][1]:  # Fächername passt
-                    thisfaecher[i].schedule = ()
-    # Hier werden einmalige Termine hinzugefügt. Info stammt aus add
-    for i in range(0, len(add)):
-        if todaydate == add[i][0]:
-            thisfaecher.append(add[i][1])
-            # print(add[i][1].schedule[0].pprint(),end=";")
-    if holibool:  # Wenn Ferien sind, dann finden keine Stunden statt :)
-        thisfaecher = []
-    return thisfaecher
+    @staticmethod
+    def _sort_helper(lectures: List[LectureDigest]) -> List[LectureDigest]:
+        if not lectures:
+            return []
+        else:
+            pivot: LectureDigest = lectures.pop(0)
+            lesser: List[LectureDigest] = \
+                SelfCorrectingLectureList._sort_helper(
+                [i for i in lectures if i < pivot]
+            )
+            greater: List[LectureDigest] = \
+                SelfCorrectingLectureList._sort_helper(
+                    [i for i in lectures if not i < pivot]
+            )
+            return lesser + [pivot] + greater
+
+    def get_length_of_day(self) -> int:
+        self._maybe_not_implemented()
+        return self._lectures[-1].important_bespan - \
+            self._lectures[0].important_bespan
+
+    def get_end_of_current_lecture(self) -> Clock:
+        self._maybe_not_implemented()
+        ret: Clock = Clock()
+        localt: Clock = Clock(time.strftime("%H:%M"))
+        for lecture in self._lectures:  # type: LectureDigest
+            if localt in lecture.important_bespan:
+                ret = lecture.important_bespan.end
+        return ret
+
+    def get_length_of_current_lecture(self) -> int:
+        self._maybe_not_implemented()
+        ret: int = 0
+        localt: Clock = Clock(time.strftime("%H:%M"))
+        for lecture in self._lectures:  # type: LectureDigest
+            if localt in lecture.important_bespan:
+                ret = lecture.important_bespan.length
+        return ret
+
+    def get_end_of_lecture(self, n: int) -> Clock:
+        self._maybe_not_implemented()
+        return self._lectures[n].important_bespan.end
+
+    def get_end_of_last_lecture(self) -> Clock:
+        self._maybe_not_implemented()
+        return self.get_end_of_lecture(-1)
+
+    def is_empty(self) -> bool:
+        return len(self._lectures) == 0
+
+    def pprint(self) -> str:
+        self._maybe_not_implemented()
+        ret: str = ''
+        for lecture in self._lectures:  # type: LectureDigest
+            ret += lecture.pprint(lecture.imporant_schedule_index) + '\n'
+        return ret[:-1]
 
 
 # Funktionen zur main
 
 
-def processor(wd: int) -> Tuple[Clock, Clock, int, int]:
+def processor(_date: Date) -> Tuple[Clock, Clock, int, int]:
     # Gibt Fächerliste für den aktuellen Tag aus. Gibt Ende der aktuellen
     # Stunde, Tages zurück.
-    todaylectures: List[Any] = []  # beinhaltet immer int, str, Span. Aufgrund
-    # verschiedener Konversionen ist List[Any] der allgemeinste Typ, der
-    # todaylectures beschreiben kann.
-    thisfaecher: List[Lecture] = copy.deepcopy(faecher)
-    thisfaecher = correct(thisfaecher)
-    # if len(thisfaecher)>0:
-    #    print(thisfaecher[-1])
-    #    thisfaecher[-1].pprint(0)
-    for fach in thisfaecher:
-        for i in range(0, len(fach.schedule)):
-            # print(wd,fach.schedule[i].wd,fach.subject)
-            if wd == fach.schedule[i].wd:  # Wenn Fach heute stattfinded
-                todaylectures.append([
-                    fach.schedule[i].begin.h,
-                    fach.pprint(i), fach.schedule[i].bespan
-                ])
-    if len(todaylectures) == 0:
+    thisfaecher: SelfCorrectingLectureList = SelfCorrectingLectureList(
+        _date
+    )
+    thisfaecher.extend(database.faecher)
+    thisfaecher.apply_all_correctives_and_sort()
+
+    if thisfaecher.is_empty():
         print("frei")
         return Clock(), Clock(), 0, 0
-    todaylectures = qsort(todaylectures)
-    end: Clock = Clock()
-    current_len: int = 0
-    day_len: int = todaylectures[-1][-1].end.hash
-    day_len -= todaylectures[0][-1].begin.hash
-    for fach in todaylectures:
-        end = getend(fach)
-        current_len = getlen(fach)
-        print(fach[1])
-    return end, todaylectures[-1][-1].end, current_len, day_len
+
+    print(thisfaecher.pprint())
+    return thisfaecher.get_end_of_current_lecture(), \
+        thisfaecher.get_end_of_last_lecture(), \
+        thisfaecher.get_length_of_current_lecture(), \
+        thisfaecher.get_length_of_day()
 
 
-def wdtostr(wd: int) -> None:  # Gibt numerischen Wochentag menschenlesbar aus
-    if wd == 0:
-        print("Sonntag:")
-    elif wd == 1:
-        print("Montag:")
-    elif wd == 2:
-        print("Dienstag:")
-    elif wd == 3:
-        print("Mittwoch:")
-    elif wd == 4:
-        print("Donnerstag:")
-    elif wd == 5:
-        print("Freitag:")
-    elif wd == 6:
-        print("Samstag:")
-    else:
-        print(wd)
-
-
-def howlong(endtclass: Clock,
-            endtday: Clock
-            ) -> None:
+def print_remaining_length_of_hour_and_day(end_of_current_lecture: Clock,
+                                           end_of_current_day: Clock
+                                           ) -> NoReturn:
     # Bestimmt, wie lange die Stunde/der Tag noch geht
     localt: Clock = Clock(time.strftime("%H:%M", time.localtime()))
-    # Testcase: localt=Clock("12:00")
-    endtclass = copy.deepcopy(endtclass)
-    endtday = copy.deepcopy(endtday)
-    endtclass.minus(localt)
-    endtday.minus(localt)
-    if endtclass.hash > 0:
-        print()
-        print("Diese Stunde noch:", endtclass.pprint())
-        print("Heute noch:", endtday.pprint())
-    elif endtday.hash > 0:
-        print()
-        print("Heute noch:", endtday.pprint())
+    end_of_current_lecture -= localt
+    end_of_current_day -= localt
+    if end_of_current_lecture.hash > 0:
+        print("\nDiese Stunde noch:", end_of_current_lecture.pprint())
+        print("Heute noch:", end_of_current_day.pprint())
+    elif end_of_current_day.hash > 0:
+        print("\nHeute noch:", end_of_current_day.pprint())
 
-
-def add_lecture(date: int,
-                name: str,
-                room: str,
-                start: str,
-                end: str
-                ) -> Tuple[str, Lecture]:
-    # julian=datetojulian(str(todaydate)[0:4],
-    #                    str(todaydate)[4:6],
-    #                    str(todaydate)[6:8])
-    # wd=(julian+2)%7
-    strdate = str(date)
-    wd: int = int(datetime.strptime(strdate, "%Y%m%d").strftime("%w")) - 1
-
-    # print(wd,int(datetime.strptime(str(todaydate),"%Y%m%d").strftime("%w")))
-    # print(date,name,wd)
-    return strdate, Lecture(name, room, T(start, end, wd))
-
-
-for elem in ['faecher', 'rem', 'add', 'holiday', 'remall']:
-    if elem not in globals():
-        setattr(sys.modules[__name__], elem, [])
 
 # Wochentag, Datum
-todaywd = int(time.strftime("%w"))  # type: int
-# Testcase: todaywd=5
-todaydate = int(
-    time.strftime("%Y")
-    + time.strftime("%m")
-    + time.strftime("%d")
-)  # type: int
+date = Date.today()
 
 print("Heute:")
 untilclass: Clock
 untilday: Clock
 currentlen: int
 daylen: int
-untilclass, untilday, currentlen, daylen = processor(todaywd)
+untilclass, untilday, currentlen, daylen = processor(date)
 print("-----")
 print("Morgen:")
-dayinc()
-processor(todaywd)
+date.step()
+processor(date)
 print("-----")
-dayinc()
-wdtostr(todaywd)
-processor(todaywd)
-howlong(untilclass, untilday)
+date.step()
+print(date.pprint_weekday())
+processor(date)
+print_remaining_length_of_hour_and_day(untilclass, untilday)
 if giveargs:
     print(currentlen, daylen, sep=split, end="")

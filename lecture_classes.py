@@ -1,89 +1,101 @@
 # Klassen zu getend
 
-import copy
-from typing import List, Optional
+from typing import List, Optional, Tuple, NoReturn
 
 
-class Clock(object):  # Beinhaltet Uhrzeit (h:min)
-    stringv: str
-    h: int
-    m: int
-    hash: int
+class Clock:  # Beinhaltet Uhrzeit (h:min)
+    _stringv: str
+    _h: int
+    _m: int
 
     def __init__(self,
-                 timestring: str = "00:00"
-                 ) -> None:
-        self.stringv = timestring
-        self.h = int(self.stringv[0:2])
-        self.m = int(self.stringv[3:6])
-        self.hash = self.h * 60 + self.m
+                 timestring: str = "00:00",
+                 ) -> NoReturn:
+        self._stringv = timestring
+        self._h = int(self._stringv[0:2])
+        self._m = int(self._stringv[3:6])
 
-    def minus(self,
-              minuend: 'Clock'
-              ) -> None:
-        self.h -= minuend.h
-        self.m -= minuend.m
-        if self.m < 0:
-            self.m += 60
-            self.h -= 1
-        if self.h < 0:
-            self.h = 0
-            self.m = 0
-        if self.h < 10:
-            self.stringv = "0"
-            self.stringv += str(self.h)
+    def __sub__(self, other: 'Clock') -> 'Clock':
+        h: int = self._h - other._h
+        m: int = self._m - other._m
+        ret: Clock = Clock()
+        ret._m = m
+        ret._h = h
+        ret.__fix_negative_minutes()
+        ret.__set_time_to_zero_if_negative()
+        ret.__stringv_reconstruct()
+        return ret
+
+    def __fix_negative_minutes(self) -> NoReturn:
+        if self._m < 0:
+            self._m += 60
+            self._h -= 1
+
+    def __set_time_to_zero_if_negative(self) -> NoReturn:
+        if self._h < 0:
+            self._h = 0
+            self._m = 0
+
+    def __stringv_reconstruct(self) -> NoReturn:
+        if self._h < 10:
+            self._stringv = "0"
+            self._stringv += str(self._h)
         else:
-            self.stringv = str(self.h)
-        self.stringv += ":"
-        if self.m < 10:
-            self.stringv += "0"
-            self.stringv += str(self.m)
+            self._stringv = str(self._h)
+        self._stringv += ":"
+        if self._m < 10:
+            self._stringv += "0"
+            self._stringv += str(self._m)
         else:
-            self.stringv += str(self.m)
-        self.hash = self.h * 60 + self.m
+            self._stringv += str(self._m)
+
+    @property
+    def hash(self) -> int:
+        return self.__hash__()
+
+    def __hash__(self) -> int:
+        return self._h * 60 + self._m
 
     def pprint(self) -> str:
-        return self.stringv
+        return self._stringv
 
 
-class Span(object):  # Zeitspanne aus 2 Clock-Objekten
+class Span:  # Zeitspanne aus 2 Clock-Objekten
     begin: Clock
     end: Clock
+    length: int
 
     def __init__(self,
                  begin: Clock,
                  end: Clock
-                 ) -> None:
+                 ) -> NoReturn:
         self.begin = begin
         self.end = end
+        self.length = (self.end - self.begin).hash
 
-    def isbetween(self,
-                  clock: Clock
-                  ) -> bool:
-        if self.begin.hash <= clock.hash <= self.end.hash:
-            return True
-        else:
-            return False
+    def __contains__(self, item: Clock) -> bool:
+        return self._isbetween(item)
+
+    def __sub__(self, other) -> int:
+        return self.distance(other)
+
+    def distance(self, other):
+        return self.end.hash - other.begin.hash
+
+    def _isbetween(self,
+                   clock: Clock
+                   ) -> bool:
+        return self.begin.hash <= clock.hash <= self.end.hash
 
     def pprint(self) -> str:
         return self.begin.pprint() + ' - ' + self.end.pprint()
 
-    def length(self) -> int:
-        length: Clock = copy.deepcopy(self.end)
-        length.minus(self.begin)
-        return length.hash
 
-
-# Klassen zu processor / faecher
-
-
-class T(object):  # Start-Ende-Uhrzeiten, Wochentag, ggf Raum. Für Lecture
-
+class T:  # Start-Ende-Uhrzeiten, Wochentag, ggf Raum. Für Lecture
     begin: Clock
     end: Clock
     bespan: Span
-
-    wd: int
+    weekday: int
     room: str
 
     def __init__(self,
@@ -91,21 +103,18 @@ class T(object):  # Start-Ende-Uhrzeiten, Wochentag, ggf Raum. Für Lecture
                  end: str,
                  weekday: int,
                  room: Optional[str] = None
-                 ) -> None:
-        # s --> start, e --> end, h --> hour, m --> minute, wd --> weekday
-
+                 ) -> NoReturn:
         self.begin = Clock(begin)
         self.end = Clock(end)
         self.bespan = Span(self.begin, self.end)
-
-        self.wd = weekday
+        self.weekday = weekday
         self.room = room
 
     def pprint(self) -> str:
         return self.bespan.pprint()
 
 
-class Lecture(object):  # Vorlesungen/Fächer
+class Lecture:  # Vorlesungen/Fächer
     subject: str
     room: str
     schedule: List[T]
@@ -114,7 +123,7 @@ class Lecture(object):  # Vorlesungen/Fächer
                  subject: str,
                  room: str,
                  *schedule: T
-                 ) -> None:
+                 ) -> NoReturn:
         self.subject = subject
         self.room = room
         self.schedule = schedule
@@ -122,14 +131,15 @@ class Lecture(object):  # Vorlesungen/Fächer
     def pprint(self,
                n: int
                ) -> str:
-        ret: str = self.schedule[n].pprint() + ": "
-        ret += self.subject + " ("
-        if self.schedule[n].room is None:
-            ret += self.room
-        else:
-            ret += self.schedule[n].room
-        ret += ")"
+        ret: str = self.schedule[n].pprint() + ": " + self.subject
+        ret += " (" + self.__get_room_for_lecture(n) + ")"
         return ret
+
+    def __get_room_for_lecture(self,
+                               n: int) -> str:
+        if self.schedule[n].room is None:
+            return self.room
+        return self.schedule[n].room
 
 
 # Komfortfunktionen zur schnellen Eingabe der Zeiten nach den Blöcken der HSKL
