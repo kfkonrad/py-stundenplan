@@ -167,10 +167,12 @@ style: """
     border-radius: 100px
 
   .bar-hour
-    background: rgba(#00c27b, 0.75)
+    background: rgba(#98989D, 0.95) // background allgemein: .55
+    background: rgba(#FF9F0A, 0.95)
 
   .bar-day
-    background: rgba(#009C63, 0.75)
+    background: rgba(#98989D, 0.825)
+    background: rgba(#FF9F0A, 0.825)
 
 
   .overbar
