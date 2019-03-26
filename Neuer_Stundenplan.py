@@ -81,6 +81,12 @@ Version 1.9 (20/11/2018) - Split all the files
     Put all classes into individual files
     Move database import to lib.database. There users can note down the
     specific semester for the script to use 
+Version 2.0 (26/3/2019) - a new semester
+    Maintenance Release for SoSe '19
+    B is extended with a 6th T(ime-frame)
+    Function 'nacht' was added to accommodate for the new lecture
+        time (17:30-19:00). nacht uses B's 6th time frame for consistency
+        with earlier convenience functions.
 """
 
 import time

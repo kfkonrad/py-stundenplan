@@ -19,6 +19,8 @@ def B(time: int,
         return T("14:00", "15:30", wd, room)
     elif time == 5:
         return T("15:45", "17:15", wd, room)
+    elif time == 6:
+        return T("17:30", "19:00", wd, room)
     else:
         return T("00:00", "07:59", wd, room)
 
@@ -51,6 +53,11 @@ def abend(wd: int,
           room: Optional[str] = None
           ) -> B:
     return B(5, wd, room)
+
+def nacht(wd: int,
+          room: Optional[str] = None
+          ) -> B:
+    return B(6, wd, room)
 
 mo = 1
 di = 2
